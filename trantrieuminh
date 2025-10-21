@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Quản lý học sinh</title>
+  <style>
+    * {
+      margin: 0; padding: 0; box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    body {
+      background: #f0f2f5;
+      padding: 20px;
+    }
+    .header {
+      text-align: center;
+      background: #34495e;
+      color: #fff;
+      padding: 20px 0;
+      font-size: 28px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    .container {
+      max-width: 900px;
+      margin: auto;
+      background: #fff;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    h2 {
+      color: #333;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .hidden {
+      display: none;
+    }
+    .form-group {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .form-group input, .form-group select, .form-group button {
+      width: 100%;
+      padding: 10px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    .form-group button {
+      background: #27ae60;
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .form-group button:hover {
+      background: #1e8449;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      padding: 12px;
+      border: 1px solid #ddd;
+      text-align: center;
+    }
+    th {
+      background: #ecf0f1;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">Quản lý học sinh</div>
+
+  <!-- Màn đăng nhập -->
+  <div class="container" id="loginPanel">
+    <h2>Vào hệ thống</h2>
+    <div class="form-group">
+      <input type="text" id="loginName" placeholder="Nhập tên của bạn">
+      <select id="roleSelect">
+        <option value="">-- Chọn vai trò --</option>
+        <option value="teacher">Giáo viên</option>
+        <option value="student">Học sinh</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <button onclick="login()">Vào hệ thống</button>
+    </div>
+  </div>
+
+  <!-- Panel giáo viên -->
+  <div class="container hidden" id="teacherPanel">
+    <h2>Giáo viên — Nhập/Sửa điểm</h2>
+    <div class="form-group">
+      <input type="text" id="studentName" placeholder="Tên học sinh">
+      <input type="number" id="toan" placeholder="Điểm Toán">
+      <input type="number" id="van" placeholder="Điểm Văn">
+      <input type="number" id="anh" placeholder="Điểm Anh">
+      <input type="number" id="ly" placeholder="Điểm Lý">
+      <input type="number" id="hoa" placeholder="Điểm Hóa">
+      <input type="number" id="sinh" placeholder="Điểm Sinh">
+    </div>
+    <div class="form-group">
+      <button onclick="addOrUpdateStudent()">Lưu điểm</button>
+    </div>
+
+    <h3>Danh sách học sinh</h3>
+    <table id="studentTable">
+      <thead>
+        <tr>
+          <th>Tên</th><th>Toán</th><th>Văn</th><th>Anh</th><th>Lý</th><th>Hóa</th><th>Sinh</th><th>TB</th><th>Xếp loại</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- Panel học sinh -->
+  <div class="container hidden" id="studentPanel">
+    <h2>Học sinh — Xem điểm</h2>
+    <div id="studentInfo"></div>
+  </div>
+
+<script>
+  let students = {};
+  let currentUser = "";
+  let currentRole = "";
+
+  function login() {
+    const name = document.getElementById("loginName").value.trim();
+    const role = document.getElementById("roleSelect").value;
+    if (!name || !role) {
+      alert("Vui lòng nhập tên và chọn vai trò!");
+      return;
+    }
+    currentUser = name;
+    currentRole = role;
+    document.getElementById("loginPanel").classList.add("hidden");
+
+    if (role === "teacher") {
+      document.getElementById("teacherPanel").classList.remove("hidden");
+      renderStudentTable();
+    } else {
+      document.getElementById("studentPanel").classList.remove("hidden");
+      renderStudentView(name);
+    }
+  }
+
+  function addOrUpdateStudent() {
+    const name = document.getElementById("studentName").value.trim();
+    const toan = parseFloat(document.getElementById("toan").value);
+    const van = parseFloat(document.getElementById("van").value);
+    const anh = parseFloat(document.getElementById("anh").value);
+    const ly  = parseFloat(document.getElementById("ly").value);
+    const hoa = parseFloat(document.getElementById("hoa").value);
+    const sinh= parseFloat(document.getElementById("sinh").value);
+
+    if (!name || [toan,van,anh,ly,hoa,sinh].some(v => isNaN(v))) {
+      alert("Vui lòng nhập đầy đủ và đúng điểm tất cả các môn!");
+      return;
+    }
+
+    const tb = ((toan + van + anh + ly + hoa + sinh) / 6).toFixed(2);
+    let xl = "";
+    if (tb >= 8)       xl = "Giỏi";
+    else if (tb >= 6.5) xl = "Khá";
+    else if (tb >= 5)   xl = "Trung Bình";
+    else               xl = "Yếu";
+
+    students[name] = { toan, van, anh, ly, hoa, sinh, tb, xl };
+    renderStudentTable();
+    alert(`Đã lưu cho học sinh ${name}`);
+  }
+
+  function renderStudentTable() {
+    const tbody = document.querySelector("#studentTable tbody");
+    tbody.innerHTML = "";
+    for (const [name, s] of Object.entries(students)) {
+      const row = `<tr>
+        <td>${name}</td>
+        <td>${s.toan}</td>
+        <td>${s.van}</td>
+        <td>${s.anh}</td>
+        <td>${s.ly}</td>
+        <td>${s.hoa}</td>
+        <td>${s.sinh}</td>
+        <td>${s.tb}</td>
+        <td>${s.xl}</td>
+      </tr>`;
+      tbody.innerHTML += row;
+    }
+  }
+
+  function renderStudentView(name) {
+    const info = document.getElementById("studentInfo");
+    const s = students[name];
+    if (!s) {
+      info.innerHTML = `<p>Chưa có điểm cho học sinh <strong>${name}</strong>.</p>`;
+      return;
+    }
+    info.innerHTML = `
+      <p><strong>Họ tên:</strong> ${name}</p>
+      <p><strong>Toán:</strong> ${s.toan}</p>
+      <p><strong>Văn:</strong> ${s.van}</p>
+      <p><strong>Anh:</strong> ${s.anh}</p>
+      <p><strong>Lý:</strong> ${s.ly}</p>
+      <p><strong>Hóa:</strong> ${s.hoa}</p>
+      <p><strong>Sinh:</strong> ${s.sinh}</p>
+      <p><strong>Trung bình:</strong> ${s.tb}</p>
+      <p><strong>Xếp loại:</strong> ${s.xl}</p>
+    `;
+  }
+</script>
+
+</body>
+</html>
+
+
